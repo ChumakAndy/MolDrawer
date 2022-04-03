@@ -15,6 +15,7 @@ class Atom(QGraphicsPathItem):
 
         self.itemType = 'atom'
         self.kind = 'C'
+        self.charge = 0
         self.view = view
         self.point = point
 
@@ -24,7 +25,9 @@ class Atom(QGraphicsPathItem):
         self.view.atomList.add(self)
 
     def paint(self, painter, options, widget):
-        painter.setPen(Redpen)
+        list_atoms = ['O', 'S', 'N', 'Cl', 'Br', 'F', 'I', 'P']
+        if self.kind in list_atoms:
+            painter.setPen(COLORS[self.kind])
         painter.setOpacity(1.0)
 
         if not self.boundList or self.kind != 'C':
@@ -33,14 +36,23 @@ class Atom(QGraphicsPathItem):
             br.setStyle(Qt.SolidPattern)
             path = QPainterPath()
             point = QPoint(*self.point)
-            path.addEllipse(point, 70, 70)
-
+            path.addEllipse(point, 100, 100)
+ 
             painter.fillPath(path, br)
             font = QFont()
             font.setPixelSize(125)
             font.setWeight(100)
             painter.setFont(font)
             painter.drawText(self.boundingRect(), Qt.AlignCenter, self.kind)
+        if self.charge:
+            x = self.point[0] - 10
+            y = self.point[1] - 150
+            cR =  QRectF(x, y, 200, 200)
+            if self.charge == +1:
+                painter.drawText(cR, Qt.AlignCenter, '+')
+            if self.charge == -1:
+                painter.drawText(cR, Qt.AlignCenter, '-')
+
         self.shape()
     
     def shape(self):
@@ -111,6 +123,39 @@ class Bound(QGraphicsPathItem):
     def boundingRect(self):
         w = int(Width*2)
         return QRectF(-2500, -2500, 5000, 5000)
+    
+    def NPath(self, beta):
+        path = QPainterPath()
+        q,e, cosa = getDot(self.line, Width)
+        alf = 180*acos(cosa)/pi
+        if self.line[3] > self.line[1]:
+            alf = -alf
+
+        path.moveTo(*self.line[0:2])
+        qr = QRectF(self.line[0:2][0] - Width/2, self.line[0:2][1] - Width/2, Width, Width)
+        path.arcTo(qr, alf, beta)
+        path.moveTo(*self.line[2:4])
+        qr = QRectF(self.line[2:4][0] - Width/2, self.line[2:4][1] - Width/2, Width, Width)
+        path.arcTo(qr, alf, beta)
+
+        pa = QPainterPath()
+        point = QPoint(*self.line[0:2])
+        pa.addEllipse(point, 150, 150)
+        path -= pa
+
+        pa = QPainterPath()
+        point = QPoint(*self.line[2:4])
+        pa.addEllipse(point, 150, 150)
+        path -= pa
+
+        return path
+
+    def findN(self):
+        path = self.NPath(180)
+        l = len(self.view.items(self.view.mapFromScene(path)))
+        path = self.NPath(-180)
+        r = len(self.view.items(self.view.mapFromScene(path)))
+        return l, r
 
 
 class History:
@@ -135,6 +180,7 @@ class History:
         for atom in mol.atoms:
             ato = Atom(self.view, atom['point'])
             ato.kind = atom['kind']
+            ato.charge = atom['charge']
             self.view.atomList.add(ato)
         for bound in mol.bounds:
             bd = Bound(self.view, bound['line'])
@@ -143,10 +189,10 @@ class History:
             point1 = bd.line[0:2]
             point2 = bd.line[2:4]
             for a in self.view.atomList:
-                if point1 == ato.point:
+                if point1 == a.point:
                     bd.atoms.append(a)
                     a.boundList.append(bd)
-                if point2 == ato.point:
+                if point2 == a.point:
                     bd.atoms.append(a)
                     a.boundList.append(bd)
 
@@ -172,17 +218,22 @@ class Molecul:
         self.atoms = []
         self.bounds = []
         for atom in atoms:
-            a = {}
-            a['point'] = atom.point[:]
-            a['kind'] = atom.kind
-            a['bounds'] = []
-            self.atoms.append(a)
+            self.addAtom(atom)
 
         for bound in bounds:
-            b = {}
-            b['multiplicity'] = bound.multiplicity
-            b['line'] = bound.line[:]
-            b['atoms'] = []
-            self.bounds.append(b)
+            self.addBound(bound)
 
-
+    def addAtom(self, atom):
+        a = {}
+        a['point'] = atom.point[:]
+        a['kind'] = atom.kind
+        a['bounds'] = []
+        a['charge'] = atom.charge
+        self.atoms.append(a)
+    
+    def addBound(self, bound):
+        b = {}
+        b['multiplicity'] = bound.multiplicity
+        b['line'] = bound.line[:]
+        b['atoms'] = []
+        self.bounds.append(b)

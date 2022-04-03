@@ -1,0 +1,29 @@
+# folders
+**/__pycache__
+_misc/
+
+# ignore pytest cache (if for some reason it is not removed)
+.pytest_cache/
+
+# txt files
+*.txt
+*.log
+*.dat
+
+# archives and tarballs
+*.rar
+*.zip
+*.gz
+*.bz
+*.tar
+*.7z
+
+# databases
+*.sdf
+*.pkl
+*.db
+*.h5
+
+# others
+*.bak*
+*.bat

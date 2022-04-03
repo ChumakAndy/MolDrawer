@@ -47,8 +47,81 @@ class Grf(QGraphicsView):
         self.onAtom_click = None
         self.atom_text = ''
         self.atom_change = None
+    
+    def addPolyg(self, item, N):
+        n = N
+        r = Width/(2*np.sin(pi/N))
+        atoms =[]
+        if item.itemType == 'atom':
+            atom = item
+            line = atom.boundList[0].line
+            if atom.point == line[0:2]:
+                line = [*line[2:4], *line[0:2]]
+            x , y , cosa = getDot(line, r)
+            alf = pi - np.arccos(cosa)
+            if line[3] > line[1]:
+                alf = - alf
+        elif item.itemType == 'bound':
+            bound = item
+            line = bound.line
+            left, right = bound.findN()
+            if left < right:
+                line = (*line[2:4], *line[0:2])
+            q, e, cosa = getDot(line, r)
+            alf = pi + np.arccos(cosa)
+            y = line[1] + r*np.sin(pi - (pi - 2*pi/N) + np.arccos(cosa))
+            x = line[0] + r*np.cos(pi - (pi - 2*pi/N) + np.arccos(cosa))
+            if line[3] < line[1]:
+                y = line[1] + r*np.sin(pi - (pi - 2*pi/N) - np.arccos(cosa))
+                x = line[0] + r*np.cos(pi - (pi - 2*pi/N) - np.arccos(cosa))
+                alf = pi - np.arccos(cosa)
+        for i in range(1, n+1):
+            x1 = x + r * np.cos(2 * pi * i / n + alf)
+            y1 = y + r * np.sin(2 * pi * i / n + alf)
+            point = (int(x1), int(y1))
+            atoms.append(point)
+        self.makeMolFromCoords(atoms)
+
+    def makeMolFromCoords(self, points):
+        atoms =[]
+        for point in points:
+            item = self.findAtom(point)
+            if item:
+                atom = item
+            elif not item:
+                atom = Atom(self, point)
+            atoms.append(atom)
+        bounds = list(self.boundSet)
+        
+        for i in range(len(points)-1):
+            nb = True
+            line = (*atoms[i].point, *atoms[i + 1].point)
+            for bd in bounds:
+                if line == bd.line or (*line[2:4], *line[0:2]) == bd.line:
+                    nb = False
+            if nb:
+                bound = Bound(self, line)
+                atoms[i].boundList.append(bound)
+                atoms[i + 1].boundList.append(bound)
+                bound.atoms.append(atoms[i])
+                bound.atoms.append(atoms[i + 1])
+        nb = True
+        line = (*atoms[0].point, *atoms[-1].point)
+        for bd in bounds:
+            if line == bd.line or (*line[2:4], *line[0:2]) == bd.line:
+                nb = False
+        if nb:
+            bound = Bound(self, line)
+            atoms[0].boundList.append(bound)
+            atoms[-1].boundList.append(bound)
+            bound.atoms.append(atoms[0])
+            bound.atoms.append(atoms[-1])
+
+        self.upd()
 
     def addMol(self, mol):
+        if mol.GetNumAtoms() == 1:
+            mol = Chem.AddHs(mol)
         AllChem.Compute2DCoords(mol)
         bkinds = {Chem.BondType.SINGLE: 1,
                   Chem.BondType.DOUBLE: 2,
@@ -64,6 +137,7 @@ class Grf(QGraphicsView):
             point = (int(coordinates[i][0]), int(coordinates[i][1]))
             atom = Atom(self, point)
             atom.kind = k.GetSymbol()
+            atom.charge = k.GetFormalCharge()
             atomL.append(atom)
             self.atomList.add(atom)
 
@@ -125,14 +199,23 @@ class Grf(QGraphicsView):
         self.xStart = self.mapToScene(event.pos()).x()
         self.yStart = self.mapToScene(event.pos()).y()
         if event.button() == Qt.RightButton:
+            # item = self.itemAt(event.pos())
+            # if item:
+            #     item = self.findAtom((self.xStart, self.yStart))
+            #     if item:
+            #         self.deleteAtom(item)
+            #     else:
+            #         item = self.itemAt(event.pos())
+            #         self.deleteBound(item)
             item = self.itemAt(event.pos())
             if item:
                 item = self.findAtom((self.xStart, self.yStart))
                 if item:
-                    self.deleteAtom(item)
+                    self.addPolyg(item, 6)
                 else:
                     item = self.itemAt(event.pos())
-                    self.deleteBound(item)
+                    self.addPolyg(item, 6)
+
 
         elif event.button() == Qt.LeftButton:
             item = self.itemAt(event.pos())
@@ -155,6 +238,7 @@ class Grf(QGraphicsView):
                     self.itemSelect = item
                     self._clickstart = None
             self.isClicked = True
+            self.upd()
 
     def mouseMoveEvent(self, event):
         self.mousePos = (self.mapToScene(event.pos()).x(), self.mapToScene(event.pos()).y())
@@ -166,7 +250,7 @@ class Grf(QGraphicsView):
                         self.itemSelect.line = (*self.itemSelect.atoms[0].point,
                          self.mapToScene(event.pos()).x(),
                           self.mapToScene(event.pos()).y())
-                        self.itemSelect.update()
+                        self.upd()
 
     def mouseReleaseEvent(self, event):
         self.xFinish = self.mapToScene(event.pos()).x()
@@ -187,6 +271,8 @@ class Grf(QGraphicsView):
                                 if self.itemSelect.atoms[0] in bd.atoms:
                                     self.deleteBound(self.itemSelect)
                                     self.itemSelect = None
+                                    self.isClicked = False
+                                    return
                             if self.itemSelect:
                                 self.itemSelect.atoms.append(atomAt)
                                 atomAt.boundList.append(self.itemSelect)
@@ -201,6 +287,8 @@ class Grf(QGraphicsView):
                             if self.itemSelect.atoms[0] in bd.atoms:
                                 self.deleteBound(self.itemSelect)
                                 self.itemSelect = None
+                                self.isClicked = False
+                                return
                         if self.itemSelect:
                             self.itemSelect.atoms.append(item)
                             item.boundList.append(self.itemSelect)
@@ -216,6 +304,7 @@ class Grf(QGraphicsView):
         self.yFinish = None
     
     def keyPressEvent(self, event):
+        alphabet = 'abcdefghijklmnopqrstuvwxyz'
         modifiers = QApplication.keyboardModifiers()
         atom = self.findAtom(self.mousePos)
         if modifiers == Qt.ControlModifier:
@@ -225,26 +314,37 @@ class Grf(QGraphicsView):
                 self.history.redo()
         elif atom:
             if not self.onAtom_click or time.time() - self.onAtom_click > 1:
-                self.atom_change = atom
-                self.atom_text = ''
-                self.onAtom_click = time.time()
-                self.atom_text += event.text()
-                atom.kind = self.atom_text.upper()
-                atom.update()
-            elif time.time() - self.onAtom_click < 1:
-                if atom == self.atom_change:
-                    self.atom_text = self.atom_change.kind + event.text().lower()
-                    self.atom_change.kind = self.atom_text
-                    self.atom_change.update()
-                    self.onAtom_click = None
-                    self.atom_change = None
-                elif atom != self.atom_change:
+                if event.text() and event.text() in alphabet:
                     self.atom_change = atom
                     self.atom_text = ''
                     self.onAtom_click = time.time()
                     self.atom_text += event.text()
                     atom.kind = self.atom_text.upper()
                     atom.update()
+                elif event.text() and event.text() in '0-=+':
+                    if event.text() in '=+':
+                        atom.charge = +1
+                    elif event.text() == '-':
+                        atom.charge = -1
+                    elif event.text() == '0':
+                        atom.charge = 0
+                    atom.update()
+            elif time.time() - self.onAtom_click < 1:
+                if atom == self.atom_change:
+                    if event.text() in alphabet:
+                        self.atom_text = self.atom_change.kind + event.text().lower()
+                        self.atom_change.kind = self.atom_text
+                        self.atom_change.update()
+                        self.onAtom_click = None
+                        self.atom_change = None
+                elif atom != self.atom_change:
+                    if event.text() in alphabet:
+                        self.atom_change = atom
+                        self.atom_text = ''
+                        self.onAtom_click = time.time()
+                        self.atom_text += event.text()
+                        atom.kind = self.atom_text.upper()
+                        atom.update()
             self.history.update()
             self.upd()
 

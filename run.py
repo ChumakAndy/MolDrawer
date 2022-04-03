@@ -11,9 +11,20 @@ class Wins(QMainWindow):
 
         self.wid = Grf()
         toolbar = self.addToolBar('Experiment')
-        getSm = QAction('Smiles',self)
+        getSm = QAction(':)',self)
+        splin = QAction('~',self)
+        un = QAction('<',self)
+        re = QAction('>',self)
+
         toolbar.addAction(getSm)
+        toolbar.addAction(splin)
+        toolbar.addAction(un)
+        toolbar.addAction(re)
+
         getSm.triggered.connect(self.getS)
+        splin.triggered.connect(self.spl)
+        re.triggered.connect(self.redo)
+        un.triggered.connect(self.undo)
 
         self.setCentralWidget(self.wid)
     
@@ -27,8 +38,8 @@ class Wins(QMainWindow):
         for atom in list_atoms:
             atom.IDX = list_atoms.index(atom)
             rdatom = Chem.Atom(atom.kind)
-            # if atom.charge != '':
-            #     rdatom.SetFormalCharge(ckinds[atom.charge])
+            if atom.charge != 0:
+                rdatom.SetFormalCharge(atom.charge)
             mol.AddAtom(rdatom)
 
         for bond in self.wid.boundSet:
@@ -41,7 +52,17 @@ class Wins(QMainWindow):
         Chem.Kekulize(mol, clearAromaticFlags=True)
 
         print(Chem.MolToSmiles(mol))
+        return mol
+
+    def spl(self):
+        mol = self.getS()
         self.wid.addMol(mol)
+
+    def undo(self):
+        self.wid.history.undo()
+
+    def redo(self):
+        self.wid.history.redo()
 
 
 

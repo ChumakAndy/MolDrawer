@@ -1,5 +1,5 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QMainWindow, QAction
+from PyQt5.QtWidgets import QApplication, QMainWindow, QAction, QActionGroup
 from engine import Grf
 from rdkit import Chem
 
@@ -15,19 +15,45 @@ class Wins(QMainWindow):
         splin = QAction('~',self)
         un = QAction('<',self)
         re = QAction('>',self)
+        cl = QAction('Clean',self)
 
         toolbar.addAction(getSm)
         toolbar.addAction(splin)
         toolbar.addAction(un)
         toolbar.addAction(re)
+        toolbar.addAction(cl)
+
+        self.gr = QActionGroup(self)
+        self.actions = {}
+        action_list = ['1', '3', '4', '5', '6', 'benz']
+        for i in action_list:
+            self.actions[i] = QAction(i,self, checkable=True)
+            self.gr.addAction(self.actions[i])
+            toolbar.addAction(self.actions[i])
+            self.actions[i].triggered.connect(self.callBot)
+
+        self.actions['1'].setChecked(True)
 
         getSm.triggered.connect(self.getS)
         splin.triggered.connect(self.spl)
         re.triggered.connect(self.redo)
         un.triggered.connect(self.undo)
+        cl.triggered.connect(self.clean_)
 
         self.setCentralWidget(self.wid)
     
+    def clean_(self):
+        self.wid.scene().clear()
+        self.wid.atomList = set()
+        self.wid.boundSet = set()
+        self.wid.history.data  = []
+        self.wid.history.pos = -1
+        self.wid.history.update()
+    
+    def callBot(self):
+        sender = self.sender().text()
+        self.wid.mode = sender
+
     def getS(self):
         bkinds = {1: Chem.BondType.SINGLE,
                   2: Chem.BondType.DOUBLE,

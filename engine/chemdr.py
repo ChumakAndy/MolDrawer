@@ -17,7 +17,7 @@ class MyScene(QGraphicsScene):
 
     def __init__(self):
         super().__init__()
-        self.setSceneRect(-2500, -2500, 5000.00, 5000.00)
+        self.setSceneRect(-5000, -5000, 10000.00, 10000.00)
         
 
 class Grf(QGraphicsView):
@@ -28,7 +28,7 @@ class Grf(QGraphicsView):
         self.sc = MyScene()
         self.setScene (self.sc)
         self.setRenderHints(QPainter.Antialiasing | QPainter.HighQualityAntialiasing)
-        self.scale(0.1, 0.1)
+        self.scale(0.06, 0.06)
         self.setMouseTracking(True)
 
         self.atomList = set()
@@ -47,14 +47,23 @@ class Grf(QGraphicsView):
         self.onAtom_click = None
         self.atom_text = ''
         self.atom_change = None
+        self.mode = '1'
     
-    def addPolyg(self, item, N):
+    def addPolyg(self, item, N, benz=False):
+        itemAt = None
         n = N
         r = Width/(2*np.sin(pi/N))
         atoms =[]
-        if item.itemType == 'atom':
+        if not item:
+            x = self.xStart
+            y = self.yStart
+            alf = pi/2
+        elif item.itemType == 'atom':
             atom = item
-            line = atom.boundList[0].line
+            if atom.boundList:
+                line = atom.boundList[0].line
+            else:
+                line = (*atom.point, atom.point[0] + Width, atom.point[1])
             if atom.point == line[0:2]:
                 line = [*line[2:4], *line[0:2]]
             x , y , cosa = getDot(line, r)
@@ -68,21 +77,32 @@ class Grf(QGraphicsView):
             if left < right:
                 line = (*line[2:4], *line[0:2])
             q, e, cosa = getDot(line, r)
-            alf = pi + np.arccos(cosa)
-            y = line[1] + r*np.sin(pi - (pi - 2*pi/N) + np.arccos(cosa))
-            x = line[0] + r*np.cos(pi - (pi - 2*pi/N) + np.arccos(cosa))
-            if line[3] < line[1]:
-                y = line[1] + r*np.sin(pi - (pi - 2*pi/N) - np.arccos(cosa))
-                x = line[0] + r*np.cos(pi - (pi - 2*pi/N) - np.arccos(cosa))
-                alf = pi - np.arccos(cosa)
+            al = np.arccos(cosa)
+            if line[3] > line[1]:
+                al = - al
+            alf = 3*pi/2 - al - pi/N
+
+
+            re = r*np.sin(pi/2 - pi/N)
+            v = (line[2]- (line[0]+line[2])/2, line[3]- (line[1]+line[3])/2)
+            v2 = (-2*re*v[1]/Width, 2*re*v[0]/Width)
+            x = (line[0]+line[2])/2 + v2[0]
+            y = (line[1]+line[3])/2 + v2[1]
+
         for i in range(1, n+1):
             x1 = x + r * np.cos(2 * pi * i / n + alf)
             y1 = y + r * np.sin(2 * pi * i / n + alf)
             point = (int(x1), int(y1))
             atoms.append(point)
-        self.makeMolFromCoords(atoms)
 
-    def makeMolFromCoords(self, points):
+        if benz:
+            itemAt = item
+            if not item:
+                itemAt = True
+        self.makeMolFromCoords(atoms, itemAt=itemAt)
+
+
+    def makeMolFromCoords(self, points, itemAt=None):
         atoms =[]
         for point in points:
             item = self.findAtom(point)
@@ -92,12 +112,14 @@ class Grf(QGraphicsView):
                 atom = Atom(self, point)
             atoms.append(atom)
         bounds = list(self.boundSet)
-        
+        newBounds = []
+
         for i in range(len(points)-1):
             nb = True
             line = (*atoms[i].point, *atoms[i + 1].point)
             for bd in bounds:
                 if line == bd.line or (*line[2:4], *line[0:2]) == bd.line:
+                    newBounds.append(bd)
                     nb = False
             if nb:
                 bound = Bound(self, line)
@@ -105,10 +127,12 @@ class Grf(QGraphicsView):
                 atoms[i + 1].boundList.append(bound)
                 bound.atoms.append(atoms[i])
                 bound.atoms.append(atoms[i + 1])
+                newBounds.append(bound)
         nb = True
         line = (*atoms[0].point, *atoms[-1].point)
         for bd in bounds:
             if line == bd.line or (*line[2:4], *line[0:2]) == bd.line:
+                newBounds.append(bd)
                 nb = False
         if nb:
             bound = Bound(self, line)
@@ -116,6 +140,31 @@ class Grf(QGraphicsView):
             atoms[-1].boundList.append(bound)
             bound.atoms.append(atoms[0])
             bound.atoms.append(atoms[-1])
+            newBounds.append(bound)
+        if itemAt == True:
+            for i in range(3):
+                newBounds[i*2 + 1].multiplicity = 2
+        elif itemAt and itemAt.itemType == 'bound':
+            if itemAt.multiplicity == 1:
+                check = False
+                interBounds = itemAt.atoms[0].boundList + itemAt.atoms[1].boundList
+                for bd in interBounds:
+                    if bd.multiplicity != 1:
+                        check = True
+                if not check:
+                    for i in range(3):
+                        newBounds[i*2].multiplicity = 2
+                if check:
+                    for i in range(3):
+                        newBounds[i*2 + 1].multiplicity = 2
+                    itemAt.multiplicity = 1
+            else:
+                for i in range(3):
+                    newBounds[i*2 + 1].multiplicity = 2
+        elif itemAt and itemAt.itemType == 'atom':
+            for i in range(3):
+                newBounds[i*2 + 1].multiplicity = 2
+
 
         self.upd()
 
@@ -199,44 +248,56 @@ class Grf(QGraphicsView):
         self.xStart = self.mapToScene(event.pos()).x()
         self.yStart = self.mapToScene(event.pos()).y()
         if event.button() == Qt.RightButton:
-            # item = self.itemAt(event.pos())
-            # if item:
-            #     item = self.findAtom((self.xStart, self.yStart))
-            #     if item:
-            #         self.deleteAtom(item)
-            #     else:
-            #         item = self.itemAt(event.pos())
-            #         self.deleteBound(item)
             item = self.itemAt(event.pos())
             if item:
                 item = self.findAtom((self.xStart, self.yStart))
                 if item:
-                    self.addPolyg(item, 6)
+                    self.deleteAtom(item)
                 else:
                     item = self.itemAt(event.pos())
-                    self.addPolyg(item, 6)
-
+                    self.deleteBound(item)
 
         elif event.button() == Qt.LeftButton:
             item = self.itemAt(event.pos())
             self._clickstart = time.time()
             if not item:
-                atom = Atom(self, (self.xStart, self.yStart))
-                bound = Bound(self, (*atom.point, self.xStart + 500, self.yStart))
-                bound.atoms.append(atom)
-                atom.boundList.append(bound)
-                self.itemSelect = bound
+                if self.mode == '1':
+                    atom = Atom(self, (self.xStart, self.yStart))
+                    bound = Bound(self, (*atom.point, self.xStart + 500, self.yStart))
+                    bound.atoms.append(atom)
+                    atom.boundList.append(bound)
+                    self.itemSelect = bound
+                elif self.mode == 'benz':
+                    self.addPolyg(item, 6, benz=True)
+                    self._clickstart = None
+                else:
+                    self.addPolyg(item, int(self.mode))
+                    self._clickstart = None
             elif item:
                 newitem = self.findAtom((self.xStart, self.yStart))
                 if newitem:
-                    line = self.lineFromAtom(newitem)
-                    bound = Bound(self, line)
-                    bound.atoms.append(newitem)
-                    newitem.boundList.append(bound)
-                    self.itemSelect = bound
+                    if self.mode == '1':
+                        line = self.lineFromAtom(newitem)
+                        bound = Bound(self, line)
+                        bound.atoms.append(newitem)
+                        newitem.boundList.append(bound)
+                        self.itemSelect = bound
+                    elif self.mode == 'benz':
+                        self.addPolyg(item, 6, benz=True)
+                        self._clickstart = None
+                    else:
+                        self.addPolyg(newitem, int(self.mode))
+                        self._clickstart = None
                 elif item.itemType == 'bound':
-                    self.itemSelect = item
-                    self._clickstart = None
+                    if self.mode == '1':
+                        self.itemSelect = item
+                        self._clickstart = None
+                    elif self.mode == 'benz':
+                        self.addPolyg(item, 6, benz=True)
+                        self._clickstart = None
+                    else:
+                        self.addPolyg(item, int(self.mode))
+                        self._clickstart = None
             self.isClicked = True
             self.upd()
 
@@ -245,11 +306,8 @@ class Grf(QGraphicsView):
         if self.isClicked:
             if self._clickstart is not None:
                 if time.time() - self._clickstart > 0.2:
-                    point = (self.mapToScene(event.pos()).x(), self.mapToScene(event.pos()).y())
                     if self.itemSelect.itemType == 'bound':
-                        self.itemSelect.line = (*self.itemSelect.atoms[0].point,
-                         self.mapToScene(event.pos()).x(),
-                          self.mapToScene(event.pos()).y())
+                        self.itemSelect.line = (*self.itemSelect.atoms[0].point, *self.mousePos)
                         self.upd()
 
     def mouseReleaseEvent(self, event):
@@ -257,42 +315,41 @@ class Grf(QGraphicsView):
         self.yFinish = self.mapToScene(event.pos()).y()
         item = self.findAtom((self.xFinish, self.yFinish))
         if self.itemSelect:
-            if self.itemSelect.itemType == 'bound':
-                if self._clickstart is None:
-                    self.itemSelect.change_multiplicity()
-                    self.itemSelect.update()
-                elif self._clickstart is not None:
-                    time_ = time.time() - self._clickstart
-                    if not item or time_ < 0.2 or self.itemSelect.atoms[0] is item:
-                        point = tuple(self.itemSelect.line[2: 4])
-                        atomAt = self.findAtom(point)
-                        if atomAt:
-                            for bd in atomAt.boundList:
-                                if self.itemSelect.atoms[0] in bd.atoms:
-                                    self.deleteBound(self.itemSelect)
-                                    self.itemSelect = None
-                                    self.isClicked = False
-                                    return
-                            if self.itemSelect:
-                                self.itemSelect.atoms.append(atomAt)
-                                atomAt.boundList.append(self.itemSelect)
-                                self.itemSelect.update()
-                        elif not atomAt:
-                            atom = Atom(self, point)
-                            self.itemSelect.atoms.append(atom)
-                            atom.boundList.append(self.itemSelect)
-                            self.itemSelect.update()
-                    elif item:
-                        for bd in item.boundList:
+            if self._clickstart is None:
+                self.itemSelect.change_multiplicity()
+                self.itemSelect.update()
+            elif self._clickstart is not None:
+                time_ = time.time() - self._clickstart
+                if not item or time_ < 0.2 or self.itemSelect.atoms[0] is item:
+                    point = tuple(self.itemSelect.line[2: 4])
+                    atomAt = self.findAtom(point)
+                    if atomAt:
+                        for bd in atomAt.boundList:
                             if self.itemSelect.atoms[0] in bd.atoms:
                                 self.deleteBound(self.itemSelect)
                                 self.itemSelect = None
                                 self.isClicked = False
                                 return
                         if self.itemSelect:
-                            self.itemSelect.atoms.append(item)
-                            item.boundList.append(self.itemSelect)
+                            self.itemSelect.atoms.append(atomAt)
+                            atomAt.boundList.append(self.itemSelect)
                             self.itemSelect.update()
+                    elif not atomAt:
+                        atom = Atom(self, point)
+                        self.itemSelect.atoms.append(atom)
+                        atom.boundList.append(self.itemSelect)
+                        self.itemSelect.update()
+                elif item:
+                    for bd in item.boundList:
+                        if self.itemSelect.atoms[0] in bd.atoms:
+                            self.deleteBound(self.itemSelect)
+                            self.itemSelect = None
+                            self.isClicked = False
+                            return
+                    if self.itemSelect:
+                        self.itemSelect.atoms.append(item)
+                        item.boundList.append(self.itemSelect)
+                        self.itemSelect.update()
         self.history.update()
         self.upd()
 
@@ -351,6 +408,7 @@ class Grf(QGraphicsView):
     def upd(self):
         for item in self.scene().items():
             self.scene().removeItem(item)
+
         for bound in self.boundSet:
             self.scene().addItem(bound)
         for ato in self.atomList:

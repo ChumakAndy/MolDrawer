@@ -24,6 +24,7 @@ class Atom(QGraphicsPathItem):
         self.view.scene().addItem(self)
         self.view.atomList.add(self)
 
+
     def paint(self, painter, options, widget):
         list_atoms = ['O', 'S', 'N', 'Cl', 'Br', 'F', 'I', 'P']
         if self.kind in list_atoms:
@@ -76,7 +77,7 @@ class Bound(QGraphicsPathItem):
         self.itemType = 'bound'
 
         self.pen = QPen(QColor(0,0,0))
-        self.pen.setWidth(30)
+        self.pen.setWidth(Width/15)
         self.pen.setCapStyle(Qt.RoundCap)
 
         self.view = view
@@ -108,9 +109,18 @@ class Bound(QGraphicsPathItem):
             2 : [QLine(*poly[0:2]), QLine(*poly[2:4])],
             3 : [QLine(*poly[0:2]), QLine(*poly[2:4]), QLine(*self.line)]
         }
-
         painter.setPen(self.pen)
-        painter.drawLines(*lines[self.multiplicity])
+        if self.multiplicity == 1 or self.multiplicity == 3:
+            painter.drawLines(*lines[self.multiplicity])
+        elif self.multiplicity == 2:
+            left, right = self.findN()
+            if left > right:
+                painter.drawLines(QLine(*self.line), QLine(*poly[0:2]))
+            else:
+                painter.drawLines(QLine(*self.line), QLine(*poly[2:4]))
+
+
+
         self.shape()
 
     def shape(self):
@@ -122,7 +132,7 @@ class Bound(QGraphicsPathItem):
 
     def boundingRect(self):
         w = int(Width*2)
-        return QRectF(-2500, -2500, 5000, 5000)
+        return QRectF(-5000, -5000, 10000, 10000)
     
     def NPath(self, beta):
         path = QPainterPath()

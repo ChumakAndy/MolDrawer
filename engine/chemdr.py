@@ -43,12 +43,45 @@ class Grf(QGraphicsView):
         self.mousePos = ()
 
         self.itemSelect = None
+        self.atomSelect = None
         self._clickstart = None
         self.onAtom_click = None
         self.atom_text = ''
         self.atom_change = None
         self.mode = '1'
+        self.ErrorList = []
     
+    def findErrors(self):
+        points = []
+
+        bkinds = {1: Chem.BondType.SINGLE,
+                  2: Chem.BondType.DOUBLE,
+                  3: Chem.BondType.TRIPLE}
+        mol = Chem.RWMol()
+        list_atoms = list(self.atomList)
+        try:
+            for atom in list_atoms:
+                atom.IDX = list_atoms.index(atom)
+                rdatom = Chem.Atom(atom.kind)
+                if atom.charge != 0:
+                    rdatom.SetFormalCharge(atom.charge)
+                mol.AddAtom(rdatom)
+        except:
+            points.append(atom)
+            return points
+        for bond in self.boundSet:
+            at1 = bond.atoms[0].IDX
+            at2 = bond.atoms[1].IDX
+            mol.AddBond(at1, at2, bkinds[bond.multiplicity])
+        
+        mol = mol.GetMol()
+
+        problems = Chem.DetectChemistryProblems(mol)
+        for problem in problems:
+            point = list_atoms[problem.GetAtomIdx()]
+            points.append(point)
+        return points
+
     def addPolyg(self, item, N, benz=False):
         itemAt = None
         n = N
@@ -76,16 +109,18 @@ class Grf(QGraphicsView):
             left, right = bound.findN()
             if left < right:
                 line = (*line[2:4], *line[0:2])
+            v = (line[2]- line[0], line[3]- line[1])
+            wi = (v[0]**2 + v[1]**2)**0.5
+            r = wi/(2*np.sin(pi/N))
             q, e, cosa = getDot(line, r)
             al = np.arccos(cosa)
             if line[3] > line[1]:
                 al = - al
             alf = 3*pi/2 - al - pi/N
 
-
             re = r*np.sin(pi/2 - pi/N)
             v = (line[2]- (line[0]+line[2])/2, line[3]- (line[1]+line[3])/2)
-            v2 = (-2*re*v[1]/Width, 2*re*v[0]/Width)
+            v2 = (-2*re*v[1]/wi, 2*re*v[0]/wi)
             x = (line[0]+line[2])/2 + v2[0]
             y = (line[1]+line[3])/2 + v2[1]
 
@@ -100,7 +135,6 @@ class Grf(QGraphicsView):
             if not item:
                 itemAt = True
         self.makeMolFromCoords(atoms, itemAt=itemAt)
-
 
     def makeMolFromCoords(self, points, itemAt=None):
         atoms =[]
@@ -164,8 +198,6 @@ class Grf(QGraphicsView):
         elif itemAt and itemAt.itemType == 'atom':
             for i in range(3):
                 newBounds[i*2 + 1].multiplicity = 2
-
-
         self.upd()
 
     def addMol(self, mol):
@@ -256,7 +288,12 @@ class Grf(QGraphicsView):
                 else:
                     item = self.itemAt(event.pos())
                     self.deleteBound(item)
-
+        elif event.button() == Qt.LeftButton and self.mode == 'drag':
+            self._clickstart = time.time()
+            item = self.findAtom((self.xStart, self.yStart))
+            if item:
+                self.atomSelect = item
+            self.isClicked = True
         elif event.button() == Qt.LeftButton:
             item = self.itemAt(event.pos())
             self._clickstart = time.time()
@@ -299,16 +336,19 @@ class Grf(QGraphicsView):
                         self.addPolyg(item, int(self.mode))
                         self._clickstart = None
             self.isClicked = True
-            self.upd()
+
 
     def mouseMoveEvent(self, event):
         self.mousePos = (self.mapToScene(event.pos()).x(), self.mapToScene(event.pos()).y())
         if self.isClicked:
             if self._clickstart is not None:
                 if time.time() - self._clickstart > 0.2:
-                    if self.itemSelect.itemType == 'bound':
-                        self.itemSelect.line = (*self.itemSelect.atoms[0].point, *self.mousePos)
-                        self.upd()
+                    if self.atomSelect:
+                        self.atomSelect.point = self.mousePos
+                    elif self.itemSelect:
+                        if self.itemSelect.itemType == 'bound':
+                            self.itemSelect.line = (*self.itemSelect.atoms[0].point, *self.mousePos)
+                    self.upd()
 
     def mouseReleaseEvent(self, event):
         self.xFinish = self.mapToScene(event.pos()).x()
@@ -334,11 +374,13 @@ class Grf(QGraphicsView):
                             self.itemSelect.atoms.append(atomAt)
                             atomAt.boundList.append(self.itemSelect)
                             self.itemSelect.update()
+                            self.itemSelect = None
                     elif not atomAt:
                         atom = Atom(self, point)
                         self.itemSelect.atoms.append(atom)
                         atom.boundList.append(self.itemSelect)
                         self.itemSelect.update()
+                        self.itemSelect = None
                 elif item:
                     for bd in item.boundList:
                         if self.itemSelect.atoms[0] in bd.atoms:
@@ -350,8 +392,14 @@ class Grf(QGraphicsView):
                         self.itemSelect.atoms.append(item)
                         item.boundList.append(self.itemSelect)
                         self.itemSelect.update()
+                        self.itemSelect = None
+        elif self.atomSelect:
+            self.atomSelect.point = self.mousePos
+            self.atomSelect = None
         self.history.update()
         self.upd()
+        self.ErrorList = self.findErrors()
+
 
         self.itemSelect = None
         self.isClicked = False
@@ -404,6 +452,7 @@ class Grf(QGraphicsView):
                         atom.update()
             self.history.update()
             self.upd()
+            self.ErrorList = self.findErrors()
 
     def upd(self):
         for item in self.scene().items():
@@ -415,6 +464,5 @@ class Grf(QGraphicsView):
             self.scene().addItem(ato)
         for item in self.scene().items():
             item.update()
-
 
 

@@ -12,6 +12,7 @@ class Atom(QGraphicsPathItem):
 
     def __init__(self, view, point, parent = None):
         super().__init__(parent)
+        self.setFlag(QGraphicsPathItem.ItemIsMovable)
 
         self.itemType = 'atom'
         self.kind = 'C'
@@ -53,6 +54,13 @@ class Atom(QGraphicsPathItem):
                 painter.drawText(cR, Qt.AlignCenter, '+')
             if self.charge == -1:
                 painter.drawText(cR, Qt.AlignCenter, '-')
+        if self in self.view.ErrorList:
+            pen = QPen(Qt.red)
+            pen.setWidth(15)
+            painter.setPen(pen)
+            x = self.point[0] - 100
+            y = self.point[1] - 100
+            painter.drawEllipse(x, y, 200, 200)
 
         self.shape()
     
@@ -66,6 +74,7 @@ class Atom(QGraphicsPathItem):
         x = self.point[0] - 100
         y = self.point[1] - 100
         return QRectF(x, y, 200, 200)
+
 
 
 class Bound(QGraphicsPathItem):
@@ -118,8 +127,6 @@ class Bound(QGraphicsPathItem):
                 painter.drawLines(QLine(*self.line), QLine(*poly[0:2]))
             else:
                 painter.drawLines(QLine(*self.line), QLine(*poly[2:4]))
-
-
 
         self.shape()
 

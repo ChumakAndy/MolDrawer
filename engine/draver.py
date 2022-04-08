@@ -116,7 +116,7 @@ class Bound(QGraphicsPathItem):
         lines = {
             1 : [QLine(*self.line)],
             2 : [QLine(*poly[0:2]), QLine(*poly[2:4])],
-            3 : [QLine(*poly[0:2]), QLine(*poly[2:4]), QLine(*self.line)]
+            3 : [makeShortLine(poly[0:2]), makeShortLine(poly[2:4]), QLine(*self.line)]
         }
         painter.setPen(self.pen)
         if self.multiplicity == 1 or self.multiplicity == 3:

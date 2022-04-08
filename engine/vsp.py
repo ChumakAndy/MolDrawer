@@ -140,7 +140,7 @@ def makeShortLine(line):
     sina = (1 - cosa**2)**0.5
     p1 = (x1 - r*cosa, y1 - r*sina)
     p2 = (x2 + r*cosa, y2 + r*sina)
-    if y2>y1:
+    if y2>=y1:
         p1 = (x1 + r*cosa, y1 + r*sina)
         p2 = (x2 - r*cosa, y2 - r*sina)
 

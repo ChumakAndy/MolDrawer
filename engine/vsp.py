@@ -1,7 +1,7 @@
 import numpy as np
 from math import pi, acos
 
-from PyQt5.QtCore import QRectF, QPoint
+from PyQt5.QtCore import QRectF, QPoint, QLine
 from PyQt5.QtGui import QPen, QColor
 from PyQt5.QtCore import Qt
 
@@ -56,7 +56,7 @@ def sLine(atom, alfa = 2*pi/3):
     return line
 
 
-def dLine(atom):
+def dLine(atom, poly=False):
     point1 = atom.point
     v = (0, 0)
     for bound in atom.boundList:
@@ -72,6 +72,8 @@ def dLine(atom):
 
     if len(atom.boundList) % 2 != 0:
         vi = (cosa*Width, cosb*Width)
+    if poly:
+        vi = (-vi[0], -vi[1])
     point2 = (int(point1[0] + vi[0]), int(point1[1] + vi[1]))
     line = (*point1, *point2)
     return line
@@ -123,3 +125,25 @@ def getDot(line, w):
     vi = (cosa*w, cosb*w)
     point2 = (line[2] + vi[0], line[3] + vi[1])
     return (*point2, cosa)
+
+def makeShortLine(line):
+    x1 = line[0].x()
+    y1 = line[0].y()
+    x2 = line[1].x()
+    y2 = line[1].y()
+
+    r = Width/10
+    v = (x2 - x1, y2 - y1)
+    if y2 < y1:
+        v = (x1 - x2, y1 - y2)
+    cosa = v[0]/(v[0]**2 + v[1]**2)**(0.5)
+    sina = (1 - cosa**2)**0.5
+    p1 = (x1 - r*cosa, y1 - r*sina)
+    p2 = (x2 + r*cosa, y2 + r*sina)
+    if y2>y1:
+        p1 = (x1 + r*cosa, y1 + r*sina)
+        p2 = (x2 - r*cosa, y2 - r*sina)
+
+    line = (*p1, *p2)
+    line = QLine(*line)
+    return line

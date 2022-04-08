@@ -11,10 +11,12 @@ class Wins(QMainWindow):
 
         self.wid = Grf()
         toolbar = self.addToolBar('Experiment')
+        toolbar.setContextMenuPolicy(Qt.PreventContextMenu)
+        toolbar.setMovable(False)
         getSm = QAction(get_icon('smile'), ':)',self)
-        splin = QAction(get_icon('sanitize'), '~',self)
-        un = QAction(get_icon('undo'), '<',self)
-        re = QAction(get_icon('redo'), '>',self)
+        splin = QAction(get_icon('sanitize'), 'Sanitize',self)
+        un = QAction(get_icon('undo'), 'Undo',self)
+        re = QAction(get_icon('redo'), 'Redo',self)
         cl = QAction(get_icon('clear'), 'Clean',self)
 
         toolbar.addAction(getSm)

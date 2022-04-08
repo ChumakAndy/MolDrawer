@@ -124,9 +124,9 @@ class Bound(QGraphicsPathItem):
         elif self.multiplicity == 2:
             left, right = self.findN()
             if left > right:
-                painter.drawLines(QLine(*self.line), QLine(*poly[0:2]))
+                painter.drawLines(QLine(*self.line), makeShortLine(poly[0:2]))
             else:
-                painter.drawLines(QLine(*self.line), QLine(*poly[2:4]))
+                painter.drawLines(QLine(*self.line), makeShortLine(poly[2:4]))
 
         self.shape()
 

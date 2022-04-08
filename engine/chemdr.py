@@ -94,7 +94,10 @@ class Grf(QGraphicsView):
         elif item.itemType == 'atom':
             atom = item
             if atom.boundList:
-                line = atom.boundList[0].line
+                if len(atom.boundList) == 1:
+                    line = atom.boundList[0].line
+                else:
+                    line = dLine(atom, poly=True)
             else:
                 line = (*atom.point, atom.point[0] + Width, atom.point[1])
             if atom.point == line[0:2]:
@@ -203,6 +206,7 @@ class Grf(QGraphicsView):
     def addMol(self, mol):
         if mol.GetNumAtoms() == 1:
             mol = Chem.AddHs(mol)
+        Chem.Kekulize(mol, clearAromaticFlags=True)
         AllChem.Compute2DCoords(mol)
         bkinds = {Chem.BondType.SINGLE: 1,
                   Chem.BondType.DOUBLE: 2,

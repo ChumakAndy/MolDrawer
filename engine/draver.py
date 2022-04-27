@@ -32,28 +32,35 @@ class Atom(QGraphicsPathItem):
             painter.setPen(COLORS[self.kind])
         painter.setOpacity(1.0)
 
-        if not self.boundList or self.kind != 'C':
+        if not self.boundList or self.kind != 'C' or self.charge:
 
             br = QBrush(Qt.white)
             br.setStyle(Qt.SolidPattern)
             path = QPainterPath()
             point = QPoint(*self.point)
-            path.addEllipse(point, 100, 100)
+            path.addEllipse(point, 150, 150)
  
             painter.fillPath(path, br)
             font = QFont()
-            font.setPixelSize(125)
+            font.setPixelSize(150)
             font.setWeight(100)
             painter.setFont(font)
             painter.drawText(self.boundingRect(), Qt.AlignCenter, self.kind)
         if self.charge:
-            x = self.point[0] - 10
-            y = self.point[1] - 150
+            x = self.point[0] + 75
+            y = self.point[1] - 200
             cR =  QRectF(x, y, 200, 200)
-            if self.charge == +1:
-                painter.drawText(cR, Qt.AlignCenter, '+')
-            if self.charge == -1:
-                painter.drawText(cR, Qt.AlignCenter, '-')
+            br = QBrush(Qt.white)
+            br.setStyle(Qt.SolidPattern)
+            painter.fillRect(cR, br)
+            if self.charge >0:
+                text = '+'
+            if self.charge <0:
+                text = '-'
+            if abs(self.charge) != 1:
+                text = str(abs(self.charge)) + text
+            painter.drawText(cR, Qt.AlignCenter, text)
+
         if self in self.view.ErrorList:
             pen = QPen(Qt.red)
             pen.setWidth(15)

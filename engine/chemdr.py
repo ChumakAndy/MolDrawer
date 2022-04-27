@@ -204,8 +204,25 @@ class Grf(QGraphicsView):
         self.upd()
 
     def addMol(self, mol):
-        if mol.GetNumAtoms() == 1:
-            mol = Chem.AddHs(mol)
+        if Chem.MolToSmiles(mol) == '[H][H]':
+            point1 = (-250, 0)
+            point2 = (250, 0)
+            atom1 = Atom(self, point1)
+            atom1.kind = 'H'
+            atom2 = Atom(self, point2)
+            atom2.kind = 'H'
+            self.atomList.add(atom1)
+            self.atomList.add(atom2)
+            bo = Bound(self, (*point1, *point2))
+            bo.atoms.append(atom1)
+            bo.atoms.append(atom2)
+            atom1.boundList.append(bo)
+            atom2.boundList.append(bo)
+            self.boundSet.add(bo)
+            self.history.update()
+            self.upd()
+            return
+
         Chem.Kekulize(mol, clearAromaticFlags=True)
         AllChem.Compute2DCoords(mol)
         bkinds = {Chem.BondType.SINGLE: 1,
@@ -245,7 +262,6 @@ class Grf(QGraphicsView):
         for bound in bdl:
             self.deleteBound(bound)
         self.atomList.remove(atom)
-        self.history.update()
         self.upd()
 
     def deleteBound(self, bound):
@@ -253,7 +269,6 @@ class Grf(QGraphicsView):
             atom.boundList.remove(bound)
         bound.atoms = []
         self.boundSet.remove(bound)
-        self.history.update()
         self.upd()
 
 
@@ -432,9 +447,9 @@ class Grf(QGraphicsView):
                     atom.update()
                 elif event.text() and event.text() in '0-=+':
                     if event.text() in '=+':
-                        atom.charge = +1
+                        atom.charge += 1
                     elif event.text() == '-':
-                        atom.charge = -1
+                        atom.charge -= 1
                     elif event.text() == '0':
                         atom.charge = 0
                     atom.update()

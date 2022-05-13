@@ -1,5 +1,5 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QMainWindow, QGraphicsScene, QGraphicsView, QGraphicsLineItem, QGraphicsObject
+from PyQt5.QtWidgets import QApplication, QMainWindow, QGraphicsScene, QGraphicsView, QGraphicsLineItem, QGraphicsObject, QErrorMessage
 from PyQt5.QtGui import QPen, QColor, QPainter
 from PyQt5.QtCore import QRectF, QPointF, QLine
 from PyQt5.QtCore import Qt
@@ -8,6 +8,7 @@ from math import pi
 import time
 from rdkit import Chem
 from rdkit.Chem import AllChem
+import traceback
 
 from .draver import Atom, Bound, History
 from .vsp import *
@@ -59,6 +60,7 @@ class Grf(QGraphicsView):
                   3: Chem.BondType.TRIPLE}
         mol = Chem.RWMol()
         list_atoms = list(self.atomList)
+
         try:
             for atom in list_atoms:
                 atom.IDX = list_atoms.index(atom)
@@ -229,7 +231,7 @@ class Grf(QGraphicsView):
                   Chem.BondType.DOUBLE: 2,
                   Chem.BondType.TRIPLE: 3}
         c = mol.GetConformers()[0]
-        coordinates = Width*c.GetPositions()/1.5
+        coordinates = Width*c.GetPositions()
         atomN = list(range(c.GetNumAtoms()))
         self.scene().clear()
         self.atomList = set()
@@ -262,14 +264,14 @@ class Grf(QGraphicsView):
         for bound in bdl:
             self.deleteBound(bound)
         self.atomList.remove(atom)
-        self.upd()
+        self.restore()
 
     def deleteBound(self, bound):
         for atom in bound.atoms:
             atom.boundList.remove(bound)
         bound.atoms = []
         self.boundSet.remove(bound)
-        self.upd()
+        self.restore()
 
 
     def findAtom(self, point):
@@ -376,7 +378,6 @@ class Grf(QGraphicsView):
         if self.itemSelect:
             if self._clickstart is None:
                 self.itemSelect.change_multiplicity()
-                self.itemSelect.update()
             elif self._clickstart is not None:
                 time_ = time.time() - self._clickstart
                 if not item or time_ < 0.2 or self.itemSelect.atoms[0] is item:
@@ -392,13 +393,11 @@ class Grf(QGraphicsView):
                         if self.itemSelect:
                             self.itemSelect.atoms.append(atomAt)
                             atomAt.boundList.append(self.itemSelect)
-                            self.itemSelect.update()
                             self.itemSelect = None
                     elif not atomAt:
                         atom = Atom(self, point)
                         self.itemSelect.atoms.append(atom)
                         atom.boundList.append(self.itemSelect)
-                        self.itemSelect.update()
                         self.itemSelect = None
                 elif item:
                     for bd in item.boundList:
@@ -410,14 +409,17 @@ class Grf(QGraphicsView):
                     if self.itemSelect:
                         self.itemSelect.atoms.append(item)
                         item.boundList.append(self.itemSelect)
-                        self.itemSelect.update()
                         self.itemSelect = None
         elif self.atomSelect:
             self.atomSelect.point = self.mousePos
             self.atomSelect = None
         self.history.update()
         self.upd()
-        self.ErrorList = self.findErrors()
+        try:
+            self.ErrorList = self.findErrors()
+        except:
+            self.error_d = QErrorMessage()
+            self.error_d.showMessage(traceback.format_exc())
 
 
         self.itemSelect = None
@@ -434,8 +436,10 @@ class Grf(QGraphicsView):
         if modifiers == Qt.ControlModifier:
             if event.key() == Qt.Key_Z:
                 self.history.undo()
+                self.ErrorList = self.findErrors()
             elif event.key() == Qt.Key_Y:
                 self.history.redo()
+                self.ErrorList = self.findErrors()
         elif atom:
             if not self.onAtom_click or time.time() - self.onAtom_click > 1:
                 if event.text() and event.text() in alphabet:
@@ -444,7 +448,6 @@ class Grf(QGraphicsView):
                     self.onAtom_click = time.time()
                     self.atom_text += event.text()
                     atom.kind = self.atom_text.upper()
-                    atom.update()
                 elif event.text() and event.text() in '0-=+':
                     if event.text() in '=+':
                         atom.charge += 1
@@ -452,13 +455,11 @@ class Grf(QGraphicsView):
                         atom.charge -= 1
                     elif event.text() == '0':
                         atom.charge = 0
-                    atom.update()
             elif time.time() - self.onAtom_click < 1:
                 if atom == self.atom_change:
                     if event.text() in alphabet:
                         self.atom_text = self.atom_change.kind + event.text().lower()
                         self.atom_change.kind = self.atom_text
-                        self.atom_change.update()
                         self.onAtom_click = None
                         self.atom_change = None
                 elif atom != self.atom_change:
@@ -468,12 +469,17 @@ class Grf(QGraphicsView):
                         self.onAtom_click = time.time()
                         self.atom_text += event.text()
                         atom.kind = self.atom_text.upper()
-                        atom.update()
             self.history.update()
             self.upd()
             self.ErrorList = self.findErrors()
 
     def upd(self):
+        for bound in self.boundSet:
+            bound.update()
+        for ato in self.atomList:
+            ato.update()
+
+    def restore(self):
         for item in self.scene().items():
             self.scene().removeItem(item)
 
@@ -483,5 +489,3 @@ class Grf(QGraphicsView):
             self.scene().addItem(ato)
         for item in self.scene().items():
             item.update()
-
-

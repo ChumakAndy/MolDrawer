@@ -1,19 +1,27 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QMainWindow, QAction, QActionGroup, QErrorMessage, QMessageBox
-from engine import *
+from PyQt5.QtWidgets import QApplication, QMainWindow, QDockWidget, QAction, QActionGroup, QErrorMessage, QMessageBox
+try:
+    from .engine import *
+except:
+    from engine import *
 from rdkit import Chem
+import traceback
 
 
-class Wins(QMainWindow):
+class MolDrawer(QDockWidget):
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, caller, smiles , parent = None):
+        super().__init__(parent)
+
+        self.caller = caller
+
+        self.window = QMainWindow()
 
         self.wid = Grf()
-        toolbar = self.addToolBar('Experiment')
+        toolbar = self.window.addToolBar('Experiment')
         toolbar.setContextMenuPolicy(Qt.PreventContextMenu)
         toolbar.setMovable(False)
-        getSm = QAction(get_icon('smile'), ':)',self)
+        getSm = QAction(get_icon('update'), 'Update',self)
         splin = QAction(get_icon('sanitize'), 'Sanitize',self)
         un = QAction(get_icon('undo'), 'Undo',self)
         re = QAction(get_icon('redo'), 'Redo',self)
@@ -41,10 +49,18 @@ class Wins(QMainWindow):
         re.triggered.connect(self.redo)
         un.triggered.connect(self.undo)
         cl.triggered.connect(self.clean_)
-
-        self.setCentralWidget(self.wid)
+        self.window.setCentralWidget(self.wid)
+        self.setWidget(self.window)
         self.setWindowIcon(get_icon('flask'))
         self.setWindowTitle("MolDrawer")
+
+        mol = Chem.MolFromSmiles(smiles)
+
+        try:
+            self.wid.addMol(mol)
+        except:
+            self.error_d = QErrorMessage()
+            self.error_d.showMessage(traceback.format_exc())
     
     def clean_(self):
         self.wid.scene().clear()
@@ -64,14 +80,8 @@ class Wins(QMainWindow):
             self.error_d.showMessage('Bad structure!')
         else:
             mol = self.getS()
-            print(Chem.MolToSmiles(mol))
-            self.msg = QMessageBox()
-            self.msg.setIcon(QMessageBox.Information)
-            self.msg.setText("Smiles")
-            self.msg.setInformativeText(Chem.MolToSmiles(mol))
-            self.msg.setWindowTitle("MolDrawer")
-            self.msg.setWindowIcon(get_icon('flask'))
-            self.msg.show()
+            self.caller(mol)
+            self.close()
 
     def getS(self):
         try:
@@ -100,29 +110,28 @@ class Wins(QMainWindow):
             return mol
         except:
             self.error_d = QErrorMessage()
-            self.error_d.showMessage('Bad structure!')
+            self.error_d.showMessage('Bad structure!')#'Все хуйня! Давай по новой!!!')
 
     def spl(self):
         if self.wid.ErrorList:
             self.error_d = QErrorMessage()
-            self.error_d.showMessage('Bad structure!')
+            self.error_d.showMessage('Bad structure!')#'Все хуйня! Давай по новой!!!')
         else:
             mol = self.getS()
             self.wid.addMol(mol)
 
     def undo(self):
         self.wid.history.undo()
+        self.wid.ErrorList = self.wid.findErrors()
 
     def redo(self):
         self.wid.history.redo()
-
-
-
+        self.wid.ErrorList = self.wid.findErrors()
 
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     app.setStyle('Fusion')
-    ex = Wins()
+    ex = MolDrawer(print, '')
     ex.show()
     app.exec_()

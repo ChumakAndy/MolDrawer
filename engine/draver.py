@@ -24,6 +24,7 @@ class Atom(QGraphicsPathItem):
 
         self.view.scene().addItem(self)
         self.view.atomList.add(self)
+        self.setZValue(1)
 
 
     def paint(self, painter, options, widget):
@@ -81,7 +82,6 @@ class Atom(QGraphicsPathItem):
         x = self.point[0] - 100
         y = self.point[1] - 100
         return QRectF(x, y, 200, 200)
-
 
 
 class Bound(QGraphicsPathItem):

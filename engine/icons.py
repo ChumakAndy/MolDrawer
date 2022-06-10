@@ -1,3 +1,11 @@
+import base64
+
+from PyQt5.QtGui import QIcon, QPixmap
+
+def get_icon(name):
+    pixmap = QPixmap()
+    pixmap.loadFromData(base64.b64decode(icons[name]))
+    return QIcon(pixmap)
 
 icons = {
         '1':        b'iVBORw0KGgoAAAANSUhEUgAAAGgAAABoCAYAAAAdHLWhAAABg0lEQVR4nO3dMUqDURAA4TmC3mDL1P+RvKfgBcQjWFqIR5BYBQLGmFj4BjIfbL8wbPfgQZIfbcAjcL96kXy3AR/AHnihSCrHcQ5TJIlTcYokcS5OkRa7JE6RFrkmzmGel2x6g/4S5xN4WLHsrSmOWHHEiiNWHLHiiBVHrDhixRErjlhxxIojVhyx4ogVR6w4YjuKo7UD3iiOUnHEiiNWHLHiiBVHrDhixRErjlhxxIojVhyx4ogVR6w4YsURK45YccSKI1YcseKIFUesOGLFESuOWHHEiiNWHLHiiBVHrDhixRErjlhxxIojVhyx4ogVR6w4YsURK45YccSKI1YcseKIFUesOGJDcbQGeKU4SkNxtIbiaA3F0RqKozUUR2sojtZQHK2hOFpDcbSG4mgNxdEaiqM1FEdrKI7WUBytoThaQ3G0huJoDcXRGoqjNRRHayiO2hPXxdlTnH81XH5BXc4iw+8vQIuz2Lk31MWROBWpODLHH4wXR2oD3imO2t3qBW7dFwkd/jZOi9hqAAAAAElFTkSuQmCC',

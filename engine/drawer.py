@@ -76,15 +76,11 @@ class Atom(QGraphicsPathItem):
             y = self.point[1] - ATOM_RADIUS
             painter.drawEllipse(x, y, ATOM_RADIUS*2, ATOM_RADIUS*2)
 
-        items = self.view.items(self.view.mapFromScene(*self.view.mousePos))
-        if self in items:
+        if self in self.view.itemsIn:
             painter.setPen(Bluepen)
             x = self.point[0] - ATOM_RADIUS
             y = self.point[1] - ATOM_RADIUS
             painter.drawEllipse(x, y, ATOM_RADIUS*2, ATOM_RADIUS*2)
-
-        self.shape()
-
 
     def shape(self):
         path = QPainterPath()

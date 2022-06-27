@@ -2,10 +2,11 @@ from PyQt5.QtGui import QPen, QColor
 from PyQt5.QtCore import Qt
 
 
-BOUND_LENGHT = 750
+BOUND_LENGHT =750
 BOUND_WIDTH = 35
 ATOM_RADIUS = 100
 ATOM_SYMBOL_SIZE =200
+SCENE_RECT = 5000
 
 Redpen = QPen(Qt.red)
 Redpen.setWidth(15)

@@ -19,8 +19,8 @@ class MyScene(QGraphicsScene):
 
     def __init__(self):
         super().__init__()
-        l = BOUND_LENGHT
-        self.setSceneRect(-7*l, -7*l, 14*l, 14*l)
+        l = SCENE_RECT
+        self.setSceneRect(-l, -l, 2*l, 2*l)
 
 
 class GrV(QGraphicsView):
@@ -34,7 +34,8 @@ class GrV(QGraphicsView):
         self.setFixedSize(750, 750)
 
         self.setRenderHints(QPainter.Antialiasing | QPainter.HighQualityAntialiasing)
-        self.scale(0.071, 0.071)
+        l = SCENE_RECT
+        self.scale(745/(2*l), 745/(2*l))
         self.setMouseTracking(True)
 
         self.history = History(self)
@@ -52,6 +53,7 @@ class GrV(QGraphicsView):
         self.atom_change = None
         self.mode = '1'
         self.ErrorList = []
+        self.itemsIn = []
 
     def deleteAtom(self, atom):
         bounds = atom.boundlist()
@@ -129,6 +131,7 @@ class GrV(QGraphicsView):
 
     def mouseMoveEvent(self, event):
         self.mousePos = (self.mapToScene(event.pos()).x(), self.mapToScene(event.pos()).y())
+        self.itemsIn = self.items(self.mapFromScene(*self.mousePos))
         if self.isClicked and self._clickstart is not None:
             if time.time() - self._clickstart > 0.2:
                 if self.BoundSelected:

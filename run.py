@@ -104,3 +104,18 @@ if __name__ == '__main__':
     ex = MolDrawer(print, '')
     ex.show()
     app.exec_()
+
+'''
+if you use as docWidget in root window:
+
+need to make changes to the file drView.py in func - addMol - see comment in function.
+
+to get started widget:
+
+self.MolDrawerWidget = MolDrawer(self.the_function_for_which_you_need_smiles_of_the_drawn_molecule,
+                                 'original smiles')
+self.addDockWidget(Qt.BottomDockWidgetArea, self.MolDrawerWidget)
+self.MolDrawerWidget.setFloating(True)
+QTimer(self.MolDrawerWidget).singleShot(0.1, self.MolDrawerWidget.activateWindow)
+QTimer(self.MolDrawerWidget).singleShot(0.1, self.MolDrawerWidget.center)
+'''

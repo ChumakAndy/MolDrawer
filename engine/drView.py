@@ -258,7 +258,8 @@ class GrV(QGraphicsView):
                   Chem.BondType.DOUBLE: 2,
                   Chem.BondType.TRIPLE: 3}
         c = mol.GetConformers()[0]
-        coordinates = BOUND_LENGHT*c.GetPositions()/1.5 #НЕЗАБУДЬ УБРАТЬ ЭТО!!!
+        coordinates = BOUND_LENGHT*c.GetPositions()/1.5 #if you use single window
+        # coordinates = BOUND_LENGHT*c.GetPositions() #if you use as docWidget in root window
         atomN = list(range(c.GetNumAtoms()))
         self.scene().clear()
         atomL = []

@@ -1,5 +1,5 @@
 # MolDrawer
-Molecule drawer based on PyQt5 and rdkit
+Molecular drawer based on PyQt5 and rdkit
 
 will also need numpy
 

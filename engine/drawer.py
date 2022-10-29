@@ -10,6 +10,56 @@ from .drFuncs import *
 from .settings import *
 
 
+class Region(QGraphicsPathItem):
+
+    def __init__(self, view, point, parent = None):
+        super().__init__(parent)
+
+        self.view = view
+        self.itemType = 'region'
+
+        self.point1 = point
+        self.point2 = point
+        self.start_point = None
+        self.complite = False
+        self.atoms = []
+        self.view.scene().addItem(self)
+        self.pen = QPen(Qt.blue)
+        self.pen.setWidth(15)
+        self.pen.setStyle(Qt.DashLine)
+        self.pen.setJoinStyle(Qt.RoundJoin)
+
+
+    def move(self, point):
+        x = point[0] - self.start_point[0]
+        y = point[1] - self.start_point[1]
+        self.point1 = (self.point1[0] + x, self.point1[1] + y)
+        self.point2 = (self.point2[0] + x, self.point2[1] + y)
+        for atom in self.atoms:
+            atom.point = (atom.point[0] + x, atom.point[1] + y)
+        self.start_point = point
+
+    def getRect(self):
+        path = QPainterPath()
+        w = self.point2[0] - self.point1[0]
+        h = self.point2[1] - self.point1[1]
+        path.addRect(*self.point1, w, h)
+        return path
+
+    def paint(self, painter, options, widget):
+        w = self.point2[0] - self.point1[0]
+        h = self.point2[1] - self.point1[1]
+        painter.setPen(self.pen)
+        painter.drawRect(*self.point1, w, h)
+
+    def shape(self):
+        path = self.getRect()
+        return path
+
+    def boundingRect(self):
+        return self.view.scene().sceneRect()
+
+
 class Atom(QGraphicsPathItem):
 
     def __init__(self, view, point, parent = None):
@@ -72,6 +122,12 @@ class Atom(QGraphicsPathItem):
 
         if self in self.view.ErrorList:
             painter.setPen(Redpen)
+            x = self.point[0] - ATOM_RADIUS
+            y = self.point[1] - ATOM_RADIUS
+            painter.drawEllipse(x, y, ATOM_RADIUS*2, ATOM_RADIUS*2)
+
+        if self.view.region and self in self.view.region.atoms:
+            painter.setPen(Bluepen)
             x = self.point[0] - ATOM_RADIUS
             y = self.point[1] - ATOM_RADIUS
             painter.drawEllipse(x, y, ATOM_RADIUS*2, ATOM_RADIUS*2)

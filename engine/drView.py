@@ -10,7 +10,7 @@ from rdkit import Chem
 from rdkit.Chem import AllChem
 import traceback
 
-from .drawer import Atom, Bound, History
+from .drawer import Atom, Bound, History, Region
 from .drFuncs import *
 from .settings import *
 
@@ -51,6 +51,7 @@ class GrV(QGraphicsView):
         self.isClicked = False
         self.onAtom_click = None
         self.atom_change = None
+        self.region = None
         self.mode = '1'
         self.ErrorList = []
         self.itemsIn = []
@@ -90,11 +91,15 @@ class GrV(QGraphicsView):
         item = self.itemAt(event.pos())
 
         if event.button() == Qt.RightButton:
-            if item and self.findAtom((self.xStart, self.yStart)):
+            if self.region:
+                self.scene().removeItem(self.region)
+                self.region = None
+            elif item and self.findAtom((self.xStart, self.yStart)):
                 item = self.findAtom((self.xStart, self.yStart))
                 self.deleteAtom(item)
             elif item:
-                self.deleteBound(item)
+                if item.itemType == 'bound':
+                    self.deleteBound(item)
 
         elif event.button() == Qt.LeftButton and self.mode == '1':
             self._clickstart = time.time()
@@ -118,6 +123,8 @@ class GrV(QGraphicsView):
             self._clickstart = None
 
         elif event.button() == Qt.LeftButton and self.mode in ['3', '4', '5', '6']:
+            if item and item.itemType == 'region':
+                item = None
             self.addPolygon(item, int(self.mode))
             self._clickstart = None
         
@@ -126,6 +133,14 @@ class GrV(QGraphicsView):
             item = self.findAtom((self.xStart, self.yStart))
             if item:
                 self.AtomSelected = item
+            elif not item:
+                if self.region and self.region not in self.items(event.pos()):
+                    self.scene().removeItem(self.region)
+                    self.region = None
+                elif self.region in self.items(event.pos()):
+                    self.region.start_point = (self.xStart, self.yStart)
+                if not self.region:
+                    self.region = Region(self, (self.xStart, self.yStart))
 
         self.isClicked = True
 
@@ -138,6 +153,10 @@ class GrV(QGraphicsView):
                     self.BoundSelected.line = (*self.BoundSelected.atoms[0].point, *self.mousePos)
                 elif self.AtomSelected:
                         self.AtomSelected.point = self.mousePos
+                elif self.region and not self.region.start_point:
+                    self.region.point2 = self.mousePos
+                elif self.region and self.region.start_point:
+                    self.region.move(self.mousePos)
         self.upd()
 
     def mouseReleaseEvent(self, event):
@@ -174,6 +193,13 @@ class GrV(QGraphicsView):
                     self.BoundSelected.atoms.append(AtomAtFinish)
         elif self.AtomSelected:
             self.AtomSelected = None
+        elif self.mode == 'drag' and self.region and not self.region.complite:
+            self.region.complite = True
+            items_in_region = self.items(self.mapFromScene(self.region.getRect()))
+            for i in items_in_region:
+                if i.itemType == 'atom' and self.region.getRect().contains(QPointF(*i.point)):
+                    self.region.atoms.append(i)
+            self.start_point = None
 
         self.BoundSelected = None
         self.isClicked = False
@@ -232,6 +258,17 @@ class GrV(QGraphicsView):
             self.history.update()
             self.upd()
             self.ErrorList = self.findErrors()
+        elif self.region and event.key() == Qt.Key_Delete:
+            for atom in self.region.atoms:
+                try:
+                    self.deleteAtom(atom)
+                except:
+                    pass
+            self.scene().removeItem(self.region)
+            self.region = None
+            self.history.update()
+            self.upd()
+            self.ErrorList = self.findErrors()
 
     def upd(self):
         for item in self.scene().items():
@@ -259,9 +296,10 @@ class GrV(QGraphicsView):
                   Chem.BondType.TRIPLE: 3}
         c = mol.GetConformers()[0]
         coordinates = BOUND_LENGHT*c.GetPositions()/1.5 #if you use single window
-        # coordinates = BOUND_LENGHT*c.GetPositions() #if you use as docWidget in root window
+        #coordinates = BOUND_LENGHT*c.GetPositions() #if you use as docWidget in root window
         atomN = list(range(c.GetNumAtoms()))
         self.scene().clear()
+        self.region = None
         atomL = []
         for i, k in zip(atomN, mol.GetAtoms()):
             point = (int(coordinates[i][0]), int(coordinates[i][1]))

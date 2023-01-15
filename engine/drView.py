@@ -271,8 +271,8 @@ class GrV(QGraphicsView):
             self.ErrorList = self.findErrors()
 
     def upd(self):
-        for item in self.scene().items():
-            item.update()
+        l = SCENE_RECT
+        self.scene().update(-l, -l, 2*l, 2*l)
 
     def addMol(self, mol):
         if Chem.MolToSmiles(mol) == '[H][H]':

@@ -172,13 +172,11 @@ class GrV(QGraphicsView):
                 atomAt = self.findAtom(point)
                 if atomAt:
                     for bd in atomAt.boundlist():
-                        if self.BoundSelected.atoms[0] in bd.atoms:
-                            self.deleteBound(self.BoundSelected)
+                        if self.BoundSelected.atoms[0] not in bd.atoms:
+                            self.BoundSelected.atoms.append(atomAt)
                             self.BoundSelected = None
                             self.isClicked = False
                             return
-                    if self.BoundSelected:
-                        self.BoundSelected.atoms.append(atomAt)
                 elif not atomAt:
                     atom = Atom(self, point)
                     self.BoundSelected.atoms.append(atom)
@@ -188,7 +186,6 @@ class GrV(QGraphicsView):
                         self.deleteBound(self.BoundSelected)
                         self.BoundSelected = None
                         self.isClicked = False
-                        return
                 if self.BoundSelected:
                     self.BoundSelected.atoms.append(AtomAtFinish)
         elif self.AtomSelected:

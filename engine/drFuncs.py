@@ -45,28 +45,17 @@ def makeArcLine(atom, alfa = 2*pi/3):
     if atom.point == line[2:4]:
         line = [*line[2:4], *line[0:2]]
 
-    x1 = line[0]
-    y1 = line[1]
-    x2 = line[2]
-    y2 = line[3]
-    v = (x2 - x1, y2 - y1)
-    if v[0] and v[1]:
-        a = (v[1]**2)/(v[0]**2) + 1
-        b = - ((2*v[1])/(v[0]**2)) *(lenght**2)*np.cos(alfa)
-        c = (((lenght**2)*np.cos(alfa))**2)/(v[0]**2) - (lenght**2)
+    v = (line[2] - line[0], line[3] - line[1])
+    vector = np.array(v)
 
-        d = (b**2) - (4*a*c)
-        l = 2 * a
-        y = (-b - (d**(1/2))) / l
-        x = ((lenght**2)*np.cos(alfa) - v[1]*y)/v[0]
-    elif v[0] == 0:
-        y = (lenght**2)*np.cos(alfa)/v[1]
-        x = (lenght**2 - y**2)**0.5
-    elif v[1] == 0:
-        x = (lenght**2)*np.cos(alfa)/v[0]
-        y = (lenght**2 - x**2)**0.5
+    # define a rotation matrix to rotate the vector by 2/3 pi (120 degrees)
+    rotation_matrix = np.array([[np.cos(alfa), -np.sin(alfa)],
+                                [np.sin(alfa), np.cos(alfa)]])
 
-    vi = (x, y)
+    # multiply the rotation matrix by the input vector to get the new vector
+    new_vector = np.dot(rotation_matrix, vector)
+
+    vi = tuple(new_vector)
     point2 = (int(point1[0] + vi[0]), int(point1[1] + vi[1]))
     line = (*point1, *point2)
     return line

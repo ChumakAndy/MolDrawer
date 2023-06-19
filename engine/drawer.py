@@ -84,7 +84,8 @@ class Atom(QGraphicsPathItem):
         # items = self.view.items(self.view.mapFromScene(*self.point))
         for item in items:
             if item.itemType == 'bound':
-                Bounds.append(item)
+                if self in item.atoms:
+                    Bounds.append(item)
         return Bounds
 
     def paint(self, painter, options, widget):
@@ -199,6 +200,16 @@ class Bound(QGraphicsPathItem):
                 painter.drawLines(QLine(*self.line), makeShortLine(frame[0:2]))
             else:
                 painter.drawLines(QLine(*self.line), makeShortLine(frame[2:4]))
+        if self in self.view.itemsIn:
+            poly = makeFrame(self.line)
+            poly = QPolygonF(poly)
+            path = QPainterPath()
+            path.addPolygon(poly)
+            br = QBrush(Qt.blue)
+            br.setStyle(Qt.SolidPattern)
+            painter.setOpacity(0.5)
+            painter.fillPath(path, br)
+
         self.shape()
 
     def shape(self):

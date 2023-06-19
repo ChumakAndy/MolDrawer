@@ -3,16 +3,20 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QDockWidget, QAction, QAc
 from rdkit import Chem
 import traceback
 
-if __name__ == '__main__':
+try:
     from engine import *
-else:
+except:
+    pass
+try:
     from .engine import *
+except:
+    pass
 
 
 
 class MolDrawer(QDockWidget):
 
-    def __init__(self, caller, smiles , parent = None):
+    def __init__(self, caller, smiles, parent = None):
         super().__init__(parent)
 
         self.caller = caller
